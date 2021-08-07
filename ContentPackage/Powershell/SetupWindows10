@@ -1,4 +1,4 @@
-To log Powershell, you need to change some Windows settings
+To log Powershell, you need to change some Windows settings. If you do not change these setting, Windows does not log Powershell by default.
 
 Enableling logging
 New-Item -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging -Force
