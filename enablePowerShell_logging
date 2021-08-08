@@ -1,0 +1,21 @@
+To log Powershell, you need to change some Windows settings. If you do not change these setting, Windows does not log Powershell by default.
+
+Enableling logging
+New-Item -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging -Force
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging  -Name EnableModuleLogging -PropertyType DWORD -Value 1
+New-Item -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging\ModuleNames
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging\ModuleNames -Name '*' -PropertyType String -Value '*'
+
+Script Block Logging
+New-Item -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -Name ScriptBlockLogging -PropertyType DWORD -Value 1
+
+Store Transcriptions
+New-Item HKLM:\SOFTWARE\Policies\Microsoft\Windows\Powershell\Transcription
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\Powershell\Transcription -Name EnableTranscripting -PropertyType DWORD -Value 1
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\Powershell\Transcription -Name EnableInvocationHeader -PropertyType DWORD -Value 1
+New-ItemProperty -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\Powershell\Transcription -Name OutputDirectory -PropertyType String -Value C:\PSHTranscripts
+New-Item -ItemType Directory C:\PSHTranscripts
+
+Hint:
+This logs most traditional Powershell commands, but some adversaries use different techniques to evade logging.
