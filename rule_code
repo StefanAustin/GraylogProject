@@ -1,0 +1,107 @@
+// this rule works together with additional Windows 10 settings
+// enable: PowerShell Module logging, PowerShellScript Block logging, Transcription
+// -> event_codes 4103 and 4104 are now available
+//
+// the collector on winlogbeat needs an additional line to collect PowerShell events:
+//- name: Windows PowerShell
+
+rule "Powershell rule"
+when
+    has_field("winlog_provider_name")
+    && $message.winlog_provider_name == "PowerShell"
+//    has_field("message") is an option to scan all messages
+then
+
+//extracts all key value pairs with a = as delimiter out of message
+// alternative field: winlog_event_data_param2
+set_fields
+    (
+    fields:
+    key_value (
+        value: to_string($message.message),
+        trim_value_chars:"",
+        trim_key_chars:"",
+        delimiters:"\n",
+        kv_delimiters:"="
+             )
+);
+// renaming fields to match Graylog schema
+// please remove is you have an own schema
+rename_field
+    (
+    old_field: "UserId",
+    new_field: "user_id"
+    );
+rename_field
+    (
+    old_field: "HostName",
+    new_field: "host_hostname"
+    );  
+rename_field
+    (
+    old_field: "HostVersion",
+    new_field: "host_type_version"
+    );
+rename_field
+    (
+    old_field: "HostId",
+    new_field: "host_id"
+    );
+rename_field
+    (
+    old_field: "HostApplication",
+    new_field: "host_application"
+    );
+rename_field
+    (
+    old_field: "EngineVersion",
+    new_field: "engine_version"
+    );
+rename_field
+    (
+    old_field: "RunspaceId",
+    new_field: "runspace_id"
+    );
+rename_field
+    (
+    old_field: "PipelineId",
+    new_field: "pipeline_id"
+    );
+rename_field
+    (
+    old_field: "ScriptName",
+    new_field: "script_name"
+    );
+rename_field
+    (
+    old_field: "CommandLine",
+    new_field: "process_command_line"
+    );
+rename_field
+    (
+    old_field: "DetailSequence",
+    new_field: "detail_sequence"
+    );
+rename_field
+    (
+    old_field: "DetailTotal",
+    new_field: "detail_total"
+    );
+rename_field
+    (
+    old_field: "SequenceNumber",
+    new_field: "sequence_number"
+    );
+rename_field
+    (
+    //rename a windows field not in message
+    old_field: "winlog_event_id",
+    new_field: "event_code"
+    );
+   
+remove_field
+    // data is in message and winlog_event_data_param2 -> delete duplicate data
+    (
+    field: "winlog_event_data_param2"
+    );
+end
