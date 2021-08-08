@@ -1,0 +1,298 @@
+{
+  "v": 1,
+  "id": "bfb85ae1-4e7d-491e-9984-97e3af51d396",
+  "rev": 1,
+  "name": "PowerShell ContentPack",
+  "summary": "Small contant pack to log PowerShell commands",
+  "description": "This content pack needs additional settings on your Win 10 clients. Please enable:\n- PowerShell Module Logging\n- PowerShell Script Block logging\n- Transcription\n\nChange/modify winlogbeat (sidecar)\n- your server IP\nAdd the following line below Security  to collect Powershell logs:\n- name: Windows PowerShell",
+  "vendor": "Stefan Waldvogel",
+  "url": "https://github.com/StefanAustin/GraylogProject/tree/main/ContentPackage/Powershell",
+  "parameters": [],
+  "entities": [
+    {
+      "v": "1",
+      "type": {
+        "name": "sidecar_collector",
+        "version": "1"
+      },
+      "id": "2c6e1d7a-8efd-47b2-b907-f30e7ef0e922",
+      "data": {
+        "name": {
+          "@type": "string",
+          "@value": "winlogbeat"
+        },
+        "service_type": {
+          "@type": "string",
+          "@value": "svc"
+        },
+        "node_operating_system": {
+          "@type": "string",
+          "@value": "windows"
+        },
+        "executable_path": {
+          "@type": "string",
+          "@value": "C:\\Program Files\\Graylog\\sidecar\\winlogbeat.exe"
+        },
+        "execute_parameters": {
+          "@type": "string",
+          "@value": "-c \"%s\""
+        },
+        "validation_parameters": {
+          "@type": "string",
+          "@value": "test config -c \"%s\""
+        },
+        "default_template": {
+          "@type": "string",
+          "@value": "# Needed for Graylog\nfields_under_root: true\nfields.collector_node_id: ${sidecar.nodeName}\nfields.gl2_source_collector: ${sidecar.nodeId}\n\noutput.logstash:\n   hosts: [\"192.168.1.1:5044\"]\npath:\n  data: C:\\Program Files\\Graylog\\sidecar\\cache\\winlogbeat\\data\n  logs: C:\\Program Files\\Graylog\\sidecar\\logs\ntags:\n - windows\nwinlogbeat:\n  event_logs:\n   - name: Application\n   - name: System\n   - name: Security"
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "stream",
+        "version": "1"
+      },
+      "id": "6353d10b-1088-4cbd-ba50-5ac2fec63ee4",
+      "data": {
+        "alarm_callbacks": [],
+        "outputs": [],
+        "remove_matches": {
+          "@type": "boolean",
+          "@value": true
+        },
+        "title": {
+          "@type": "string",
+          "@value": "WindowsStream"
+        },
+        "stream_rules": [
+          {
+            "type": {
+              "@type": "string",
+              "@value": "EXACT"
+            },
+            "field": {
+              "@type": "string",
+              "@value": "beats_type"
+            },
+            "value": {
+              "@type": "string",
+              "@value": "winlogbeat"
+            },
+            "inverted": {
+              "@type": "boolean",
+              "@value": false
+            },
+            "description": {
+              "@type": "string",
+              "@value": ""
+            }
+          }
+        ],
+        "alert_conditions": [],
+        "matching_type": {
+          "@type": "string",
+          "@value": "AND"
+        },
+        "disabled": {
+          "@type": "boolean",
+          "@value": false
+        },
+        "description": {
+          "@type": "string",
+          "@value": "WindowsLogs"
+        },
+        "default_stream": {
+          "@type": "boolean",
+          "@value": false
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "pipeline_rule",
+        "version": "1"
+      },
+      "id": "85fb5b0e-df2e-4439-b7e5-4a7c0fe7a3e7",
+      "data": {
+        "title": {
+          "@type": "string",
+          "@value": "Powershell rule"
+        },
+        "description": {
+          "@type": "string",
+          "@value": "Rule for normalize PowerShell event messages and map the fields to Graylog's standard schema.\n"
+        },
+        "source": {
+          "@type": "string",
+          "@value": "// this rule works together with additional Windows 10 settings\n// enable: PowerShell Module logging, PowerShellScript Block logging, Transcription\n// -> event_codes 4103 and 4104 are now available\n//\n// the collector on winlogbeat needs an additional line to collect PowerShell events:\n//- name: Windows PowerShell\n\nrule \"Powershell rule\"\nwhen\n    has_field(\"winlog_provider_name\")\n    && $message.winlog_provider_name == \"PowerShell\"\n//    has_field(\"message\") is an option to scan all messages\nthen\n\n//extracts all key value pairs with a = as delimiter out of message\n// alternative field: winlog_event_data_param2\nset_fields \n    (\n    fields:\n    key_value (\n        value: to_string($message.message),\n        trim_value_chars:\"\",\n        trim_key_chars:\"\",\n        delimiters:\"\\n\",\n        kv_delimiters:\"=\"\n             )\n);\n// renaming fields to match Graylog schema\n// please remove is you have an own schema\nrename_field \n    (\n    old_field: \"UserId\",\n    new_field: \"user_id\"\n    );\nrename_field \n    (\n    old_field: \"HostName\",\n    new_field: \"host_hostname\"\n    );   \nrename_field \n    (\n    old_field: \"HostVersion\",\n    new_field: \"host_type_version\"\n    );\nrename_field \n    (\n    old_field: \"HostId\",\n    new_field: \"host_id\"\n    );\nrename_field \n    (\n    old_field: \"HostApplication\",\n    new_field: \"host_application\"\n    );\nrename_field \n    (\n    old_field: \"EngineVersion\",\n    new_field: \"engine_version\"\n    );\nrename_field \n    (\n    old_field: \"RunspaceId\",\n    new_field: \"runspace_id\"\n    );\nrename_field \n    (\n    old_field: \"PipelineId\",\n    new_field: \"pipeline_id\"\n    );\nrename_field \n    (\n    old_field: \"ScriptName\",\n    new_field: \"script_name\"\n    );\nrename_field \n    (\n    old_field: \"CommandLine\",\n    new_field: \"process_command_line\"\n    );\nrename_field \n    (\n    old_field: \"DetailSequence\",\n    new_field: \"detail_sequence\"\n    );\nrename_field \n    (\n    old_field: \"DetailTotal\",\n    new_field: \"detail_total\"\n    );\nrename_field \n    (\n    old_field: \"SequenceNumber\",\n    new_field: \"sequence_number\"\n    );\nrename_field \n    (\n    //rename a windows field not in message\n    old_field: \"winlog_event_id\",\n    new_field: \"event_code\"\n    );\n    \nremove_field\n    // data is in message and winlog_event_data_param2 -> delete duplicate data\n    (\n    field: \"winlog_event_data_param2\"\n    );\nend"
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "pipeline",
+        "version": "1"
+      },
+      "id": "78cb9936-461a-48c9-885e-0329e6d29429",
+      "data": {
+        "title": {
+          "@type": "string",
+          "@value": "PowerShell pipeline"
+        },
+        "description": {
+          "@type": "string",
+          "@value": "Windows PowerShell"
+        },
+        "source": {
+          "@type": "string",
+          "@value": "pipeline \"PowerShell pipeline\"\nstage 0 match either\nrule \"Powershell rule\"\nend"
+        },
+        "connected_streams": [
+          {
+            "@type": "string",
+            "@value": "6353d10b-1088-4cbd-ba50-5ac2fec63ee4"
+          }
+        ]
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "sidecar_collector_configuration",
+        "version": "1"
+      },
+      "id": "002578f9-f99e-46cc-8779-d24e819129cf",
+      "data": {
+        "collector_id": {
+          "@type": "string",
+          "@value": "2c6e1d7a-8efd-47b2-b907-f30e7ef0e922"
+        },
+        "title": {
+          "@type": "string",
+          "@value": "wingray"
+        },
+        "color": {
+          "@type": "string",
+          "@value": "#0097a7"
+        },
+        "template": {
+          "@type": "string",
+          "@value": "# Needed for Graylog\nfields_under_root: true\nfields.collector_node_id: ${sidecar.nodeName}\nfields.gl2_source_collector: ${sidecar.nodeId}\n\noutput.logstash:\n   hosts: [\"192.168.122.36:5044\"]\npath:\n  data: C:\\Program Files\\Graylog\\sidecar\\cache\\winlogbeat\\data\n  logs: C:\\Program Files\\Graylog\\sidecar\\logs\ntags:\n - windows\nwinlogbeat:\n  event_logs:\n   - name: Application\n   - name: System\n   - name: Security\n   - name: Windows PowerShell "
+        }
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    },
+    {
+      "v": "1",
+      "type": {
+        "name": "input",
+        "version": "1"
+      },
+      "id": "ebbb24ef-49fc-42b9-8d94-e8fea45502c2",
+      "data": {
+        "title": {
+          "@type": "string",
+          "@value": "WinGray"
+        },
+        "configuration": {
+          "tls_key_file": {
+            "@type": "string",
+            "@value": "admin"
+          },
+          "port": {
+            "@type": "integer",
+            "@value": 5044
+          },
+          "tls_enable": {
+            "@type": "boolean",
+            "@value": false
+          },
+          "recv_buffer_size": {
+            "@type": "integer",
+            "@value": 1048576
+          },
+          "tcp_keepalive": {
+            "@type": "boolean",
+            "@value": false
+          },
+          "tls_client_auth_cert_file": {
+            "@type": "string",
+            "@value": ""
+          },
+          "bind_address": {
+            "@type": "string",
+            "@value": "0.0.0.0"
+          },
+          "no_beats_prefix": {
+            "@type": "boolean",
+            "@value": true
+          },
+          "tls_cert_file": {
+            "@type": "string",
+            "@value": ""
+          },
+          "tls_client_auth": {
+            "@type": "string",
+            "@value": "disabled"
+          },
+          "number_worker_threads": {
+            "@type": "integer",
+            "@value": 2
+          },
+          "tls_key_password": {
+            "@type": "string",
+            "@value": "Graylog"
+          }
+        },
+        "static_fields": {},
+        "type": {
+          "@type": "string",
+          "@value": "org.graylog.plugins.beats.Beats2Input"
+        },
+        "global": {
+          "@type": "boolean",
+          "@value": true
+        },
+        "extractors": []
+      },
+      "constraints": [
+        {
+          "type": "server-version",
+          "version": ">=4.0.9+b962df8"
+        }
+      ]
+    }
+  ]
+}
