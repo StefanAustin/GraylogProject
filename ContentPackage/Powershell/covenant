@@ -1,0 +1,9 @@
+Test settings vs. Covenant
+
+Alerts look for a Powershell grunt:
+- New-object
+- MemoryStream
+- IO.Compression.DeflateStream
+- FromBase64String
+
+--> This is basic, real attackers might pick a path via macro fuction to evade real-time detection. 
